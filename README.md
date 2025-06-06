@@ -2,6 +2,12 @@
 
 This Node.js script reverse-engineers internal API calls of the legacy application at [challenge.sunvoy.com](https://challenge.sunvoy.com). It fetches a list of users and the currently authenticated user's details, and stores the results in a `users.json` file.
 
+
+## Loom Demo
+
+Watch a short demo of the script in action: [Loom Video Link](https://www.loom.com/share/56753599bd63402ebf1b21b8b1f76495?sid=58f16032-866f-46ba-81c1-4fa9c7489b69)
+
+
 ## Features
 
 - Logs in using legacy credentials (username:`demo@example.org`, password: `test`)
