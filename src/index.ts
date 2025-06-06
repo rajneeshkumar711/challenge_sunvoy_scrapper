@@ -1,76 +1,45 @@
-import axios, { AxiosResponse } from "axios";
+import { writeFile } from "fs/promises";
+import { getAuthToken } from "./auth";
+import { fetchUsers, fetchCurrentUser } from "./users";
+import { getAuthValues } from "./utils/utility";
+import { OUTPUT_FILE } from "./utils/config";
 
-const BASE_URL = "https://challenge.sunvoy.com";
-
-const credential: { username: string; password: string } = {
-  username: "demo@example.org",
-  password: "test"
-}
-
-let cookieHeader = "";
-
-// Fetch the login page and extract the nonce value
-const getNonceValue = async (): Promise<string> => {
-  const response = await axios.get(`${BASE_URL}/login`, {
-    withCredentials: true
-  });
-  const html = response.data as string;
-  const regex = new RegExp(`<input[^>]*name=["']nonce["'][^>]*value=["']([^"']+)["']`);
-  const matchNonce = html.match(regex);
-  if (!matchNonce) {
-    throw new Error("nonce not found in HTML");
+const main = async (retryCount: number = 0): Promise<void> => {
+  if (retryCount > 1) {
+    console.error("Authentication failed multiple times. Aborting...");
+    return;
   }
-  return matchNonce[1];
-}
 
-// Perform login and append cookies to session
-const login = async (): Promise<void> => {
-  const nonce = await getNonceValue();
-  const formData = new URLSearchParams({
-    ...credential,
-    nonce
-  }).toString();
-
-  const res = await axios.post(`${BASE_URL}/login`, formData, {
-    headers: {
-      Cookie: cookieHeader
-    },
-    maxRedirects: 0,
-    validateStatus: (status: any) => status < 400
-  });
-
-  const setCookie = res.headers["set-cookie"];
-  if (setCookie) {
-    const newCookies = setCookie.map((c: string) => c.split(";")[0]).join("; ");
-    cookieHeader = `${newCookies}`;
-  }
-}
-
-// Fetch the user list
-const fetchUsers = async (): Promise<any> => {
-  try {
-    const res: AxiosResponse<any[]> = await axios.post(`${BASE_URL}/api/users`, {}, {
-      headers: {
-        Cookie: cookieHeader
-      }
-    });
-    return res.data.slice(0, 10);
-  } catch (error: any) {
-  }
-}
-
-// Main execution flow
-const main = async (): Promise<void> => {
   try {
     console.log("Authenticating user...");
-    await login();
+    await getAuthToken();
 
     console.log("Fetching users...");
     const users = await fetchUsers();
-    console.log(users);
+    if (!users) throw new Error("Could not fetch users");
 
+    console.log("Getting current user auth values...");
+    const authValues: any = await getAuthValues();
+    if (!authValues) throw new Error("Could not get auth values");
+
+    console.log("Fetching current user...");
+    const currentUser = await fetchCurrentUser(authValues);
+    if (!currentUser) throw new Error("Could not fetch current user");
+
+    const result = {
+      users,
+      currentUser
+    };
+
+    await writeFile(OUTPUT_FILE, JSON.stringify(result, null, 2));
+    console.log(`${OUTPUT_FILE} created successfully!`);
   } catch (error: any) {
-    console.error("Error:", error.message);
+    if (error.status === 401) {
+      console.warn("Unauthorized. Retrying...");
+      await main(retryCount + 1);
+    } else {
+      console.error("Error:", error.message);
+    }
   }
 }
 

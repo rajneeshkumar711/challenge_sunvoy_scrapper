@@ -11,9 +11,11 @@
   "license": "ISC",
   "description": "Script to fetch users and current authenticated user from a 'https://challenge.sunvoy.com/' legacy web app",
   "dependencies": {
-    "axios": "^1.9.0"
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0"
   },
   "devDependencies": {
+    "@types/node": "^22.15.30",
     "typescript": "^5.8.3"
   }
 }
